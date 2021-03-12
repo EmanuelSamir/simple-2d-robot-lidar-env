@@ -4,16 +4,35 @@ import numpy as np
 from utils import *
 import time
 from matplotlib import pyplot as plt
+import rospy
 
 MAX_RANGE = 2.
 
 
 class Robot:
-    def __init__(self, x0, y0,  robot_radius = 0.4, dT = 0.01, is_render = True):
+    def __init__(self, x0, y0,
+                robot_radius = 0.4, 
+                dT = 0.01, 
+                is_render = True,
+                cmd_vel_topic = '/cmd_vel',
+                pose_topic = 'robot_pose',
+                rate = 10
+                ):
+
         # Initial State
         self.xr = x0
         self.yr = y0
         self.size = robot_radius
+
+        # Initial action
+        self.vl = 0
+        self.w = 0
+
+        # ROS
+        self._cmd_vel_topic = cmd_vel_topic
+        self._pose_topic = pose_topic
+
+        self.pub_cmd = rospy.Publisher()
 
         # Lidar parameters
         self.max_range = MAX_RANGE
@@ -28,15 +47,21 @@ class Robot:
 
         # If render enabled, 
         if is_render:
+            # Enable interactive plots
             plt.ion()
+
+            # Figure statement
             self.fig, self.ax = plt.subplots(figsize=(10,10))
             self.ax.set_xlim((-5, 5))
             self.ax.set_ylim((-5, 5))
+
+            # Plot Robot
             circle = plt.Circle((self.xr, self.yr), self.size, color='r', fill=True)
             self.ax.add_patch(circle)
             plt.pause(0.5)
 
-            
+    def obtain_cmd_vel(self, data):
+        data.
 
     def step(self, vx, vy):
         self.xr = self.xr + self.dT * vx
