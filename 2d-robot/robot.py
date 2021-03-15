@@ -5,18 +5,28 @@ from utils import *
 import time
 from matplotlib import pyplot as plt
 
-MAX_RANGE = 2.
-
 
 class Robot:
-    def __init__(self, x0, y0,  robot_radius = 0.4, dT = 0.01, is_render = True):
+    def __init__(self,
+                env_max_size = 5,  
+                env_min_size = -5, 
+                robot_radius = 0.4,
+                lidar_max_range = 2., 
+                dT = 0.01, 
+                is_render = True):
+
+        # Environment
+        self.env = Environment(env_min_size, env_max_size)
+        self.env_min_size = env_min_size    
+        self.env_max_size = env_max_size    
+
         # Initial State
-        self.xr = x0
-        self.yr = y0
-        self.size = robot_radius
+        self.xr = 0
+        self.yr = 0
+        self.rr = robot_radius
 
         # Lidar parameters
-        self.max_range = MAX_RANGE
+        self.max_range = lidar_max_range
         self.xls = []
         self.yls = []
 
@@ -32,34 +42,55 @@ class Robot:
             self.fig, self.ax = plt.subplots(figsize=(10,10))
             self.ax.set_xlim((-5, 5))
             self.ax.set_ylim((-5, 5))
-            circle = plt.Circle((self.xr, self.yr), self.size, color='r', fill=True)
+            circle = plt.Circle((self.xr, self.yr), self.rr, color='r', fill=True)
             self.ax.add_patch(circle)
             plt.pause(0.5)
 
+
+    def reset(self):
+        self.xr = np.random.uniform(low = self.env_min_size + self.rr , high = self.env_max_size - self.rr)
+        self.yr = np.random.uniform(low = self.env_min_size + self.rr , high = self.env_max_size - self.rr)
+
+        self.env.get_random_obstacles(self.xr, self.yr, self.rr)
+        self.xls = []
+        self.yls = []
+
+    def set_init_state(self, x0, y0):
+        self.xr = x0
+        self.yr = y0
+
+        self.env.get_random_obstacles(self.xr, self.yr, self.rr)
+        self.xls = []
+        self.yls = []
             
 
     def step(self, vx, vy):
         self.xr = self.xr + self.dT * vx
         self.yr = self.yr + self.dT * vy
  
-    def is_crashed(self, env):
-        xcs = env.xcs
-        ycs = env.ycs
-        rcs = env.rcs
+    def is_crashed(self):
+        xcs = self.env.xcs
+        ycs = self.env.ycs
+        rcs = self.env.rcs
+
+        if ( (self.xr > self.env_max_size - self.rr ) or (self.xr < self.env_min_size + self.rr )):
+            return True
+
+        if ( (self.yr > self.env_max_size - self.rr ) or (self.yr < self.env_min_size + self.rr )):
+            return True
 
         for xc, yc, rc in zip(xcs, ycs, rcs):
-            if ( np.sqrt( (xc - self.xr ) ** 2 + (yc - self.yr) ** 2) ) < rc + self.size:
-                print("Crashed")
+            if ( np.sqrt( (xc - self.xr ) ** 2 + (yc - self.yr) ** 2) ) < rc + self.rr:
                 return True
         return False
 
 
-    def scanning(self, env):
-        xcs = env.xcs
-        ycs = env.ycs
-        rcs = env.rcs
+    def scanning(self):
+        xcs = self.env.xcs
+        ycs = self.env.ycs
+        rcs = self.env.rcs
 
-        r = MAX_RANGE
+        r = self.max_range
         self.xls = []
         self.yls = []
         ths = np.arange(0,360, 4) 
@@ -72,62 +103,85 @@ class Robot:
             for xc, yc, rc in zip(xcs, ycs, rcs):   
                 is_inter, result = obtain_intersection_points(self.xr, self.yr, xl, yl, xc, yc, rc) 
                 if is_inter:
-                    cond = validate_point(result[0] - self.xr, result[1] - self.yr, self.xls[i] - self.xr, self.yls[i] - self.yr, th, MAX_RANGE)
+                    cond = validate_point(result[0] - self.xr, result[1] - self.yr, self.xls[i] - self.xr, self.yls[i] - self.yr, th, self.max_range)
                     if cond:
                         self.xls[i] = result[0]
                         self.yls[i] = result[1]
 
 
-    def render(self, env):
+    def render(self):
         if self.is_render:
-            xcs = env.xcs
-            ycs = env.ycs
-            rcs = env.rcs
+            xcs = self.env.xcs
+            ycs = self.env.ycs
+            rcs = self.env.rcs
             self.ax.clear()
             self.ax.set_xlim((-5, 5))
             self.ax.set_ylim((-5, 5))
-            circle = plt.Circle((self.xr, self.yr), self.size, color='r', fill=True,zorder=10)
+            circle = plt.Circle((self.xr, self.yr), self.rr, color='r', fill=True,zorder=10)
             self.ax.add_patch(circle)
             self.ax.scatter( self.xls, self.yls , color = 'r')
             for xc, yc, rc in zip(xcs, ycs, rcs):
-                circle = plt.Circle((xc, yc), rc, color='b', fill=False)
+                circle = plt.Circle((xc, yc), rc, color='b', fill=True)
                 self.ax.add_patch(circle)
             for xl, yl in zip(self.xls, self.yls):
-                self.ax.plot([self.xr, xl] ,[self.yr, yl])
+                self.ax.plot([self.xr, xl] ,[self.yr, yl], color = 'gray')
             
             plt.pause(0.02) 
             self.fig.canvas.draw()
 
 
 class Environment:
-    def __init__(self, xcs  = [], ycs  = [], rcs  = []):
-        # obstacles 3- x, y, radius
+    def __init__(self, env_min_size, env_max_size, xcs  = np.array([]), ycs  = np.array([]), rcs  = np.array([])):
+        # env param
+        self.env_min_size = env_min_size
+        self.env_max_size = env_max_size
+        
+        # obstacles 3- x, y, radius        print(self.xcs)
         self.xcs = xcs 
         self.ycs = ycs
         self.rcs = rcs
 
-    def get_random_obstacles(self, n = 30, min_x = -4, max_x = 4, min_y = -4, max_y = 4, r = 0.3):
-        self.xcs = np.random.uniform(low = min_x, high = max_x, size = n)
-        self.ycs = np.random.uniform(low = min_y, high = max_y, size = n)
-        self.rcs = np.array( n * [r] )
+    def _random_point_without_robot(self, pr, rr, r):
+        cond = False
+        while not cond:
+            p = np.random.uniform(low = self.env_min_size + rr + r, high = self.env_max_size - r -rr) 
+            if ( (p < pr + r + rr )  and (p > pr - r - rr) ):
+                pass
+            else:
+                cond = True
+        return p
+
+
+    def get_random_obstacles(self, xr, yr, rr, n = 30, r = 0.3):
+        xcs = []
+        ycs = []
+        rcs = n * [r]
+        
+        for _ in range(n):
+            xcs.append(self._random_point_without_robot(xr, rr, r))
+            ycs.append(self._random_point_without_robot(yr, rr, r))
+
+        self.xcs = np.array(xcs)
+        self.ycs = np.array(ycs)
+        self.rcs = np.array(rcs)
 
 
 if __name__ == '__main__':
-    robot = Robot(0., 0.)
-    env = Environment()
-
-    env.get_random_obstacles()
-    N = 100
-
-    vx = 1.2
-    vy = 1.4
-
+    robot = Robot()
     print('Start process')
+    N = 100
+    vx = 2.
+    vy = -3
+
+    robot.reset()
+
     for i in range(N):
         robot.step(vx, vy)
-        robot.is_crashed(env)
-        robot.scanning(env)
-        robot.render(env)
+        c = robot.is_crashed()
+        if c:
+            print('Crashed')
+        robot.scanning()
+        robot.render()
         time.sleep(robot.dT)
         print('step {}'.format(i))
     time.sleep(2)
