@@ -36,16 +36,6 @@ class Robot:
         self.fig = None
         self.ax = None
 
-        # If render enabled, 
-        if is_render:
-            plt.ion()
-            self.fig, self.ax = plt.subplots(figsize=(10,10))
-            self.ax.set_xlim((-5, 5))
-            self.ax.set_ylim((-5, 5))
-            circle = plt.Circle((self.xr, self.yr), self.rr, color='r', fill=True)
-            self.ax.add_patch(circle)
-            plt.pause(0.5)
-
 
     def reset(self):
         self.xr = np.random.uniform(low = self.env_min_size + self.rr , high = self.env_max_size - self.rr)
@@ -55,13 +45,40 @@ class Robot:
         self.xls = []
         self.yls = []
 
+        # If render enabled, 
+        if self.is_render:
+            plt.ion()
+            self.fig, self.ax = plt.subplots(figsize=(10,10))
+            self.ax.set_xlim((-5, 5))
+            self.ax.set_ylim((-5, 5))
+            circle = plt.Circle((self.xr, self.yr), self.rr, color='r', fill=True)
+            self.ax.add_patch(circle)
+            plt.pause(0.5)
+
     def set_init_state(self, x0, y0):
         self.xr = x0
         self.yr = y0
 
+        cond = False
+        if ( (self.xr > self.env_max_size - self.rr ) or (self.xr < self.env_min_size + self.rr )):
+            raise ValueError('x value: {} is out of range {} and {}'.format(self.xr, self.env_min_size, self.env_max_size))
+
+        if ( (self.yr > self.env_max_size - self.rr ) or (self.yr < self.env_min_size + self.rr )):
+            raise ValueError('y value: {} is out of range {} and {}'.format(self.yr, self.env_min_size, self.env_max_size))
+
         self.env.get_random_obstacles(self.xr, self.yr, self.rr)
         self.xls = []
         self.yls = []
+
+        # If render enabled, 
+        if self.is_render:
+            plt.ion()
+            self.fig, self.ax = plt.subplots(figsize=(10,10))
+            self.ax.set_xlim((-5, 5))
+            self.ax.set_ylim((-5, 5))
+            circle = plt.Circle((self.xr, self.yr), self.rr, color='r', fill=True)
+            self.ax.add_patch(circle)
+            plt.pause(0.5)
             
 
     def step(self, vx, vy):
@@ -129,6 +146,12 @@ class Robot:
             plt.pause(0.02) 
             self.fig.canvas.draw()
 
+    def close(self):
+        plt.ioff()
+        plt.close()
+
+
+
 
 class Environment:
     def __init__(self, env_min_size, env_max_size, xcs  = np.array([]), ycs  = np.array([]), rcs  = np.array([])):
@@ -169,7 +192,7 @@ class Environment:
 if __name__ == '__main__':
     robot = Robot()
     print('Start process')
-    N = 100
+    N = 10
     vx = 2.
     vy = -3
 
@@ -184,5 +207,17 @@ if __name__ == '__main__':
         robot.render()
         time.sleep(robot.dT)
         print('step {}'.format(i))
+    robot.close()
+
+    robot.set_init_state(0.4, -3)
+    for i in range(N):
+        robot.step(vx, vy)
+        c = robot.is_crashed()
+        if c:
+            print('Crashed')
+        robot.scanning()
+        robot.render()
+        time.sleep(robot.dT)
+        print('step {}'.format(i))
+    robot.close()
     time.sleep(2)
-    plt.ioff()
