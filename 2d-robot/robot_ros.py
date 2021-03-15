@@ -25,8 +25,8 @@ class Robot:
         self.size = robot_radius
 
         # Initial action
-        self.vl = 0
-        self.w = 0
+        self.vx = 0
+        self.vy = 0
 
         # ROS
         self._cmd_vel_topic = cmd_vel_topic
@@ -61,7 +61,8 @@ class Robot:
             plt.pause(0.5)
 
     def obtain_cmd_vel(self, data):
-        data.
+        self.vx = data.linear.x
+        self.vy = data.linear.y
 
     def step(self, vx, vy):
         self.xr = self.xr + self.dT * vx
