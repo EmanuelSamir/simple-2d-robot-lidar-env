@@ -1,3 +1,8 @@
+# Call Library robot
+import sys
+sys.path.insert(1,'/home/rauloestu/2d-simple-robot-lidar-env/2d-robot')
+import robot
+
 # Core libraries
 import gym 
 import numpy as np 
@@ -5,15 +10,11 @@ import math
 import time
 import os
 
-# ROS messages for communicatio
-
 # Utils for GYM 
 from gym import spaces, error, utils
 from gym.utils import seeding
 
 
-THRESHOLD_MAP_X  = 5 
-THRESHOLD_MAP_Y = 5 
 
 
 class Robot2d(gym.Env): 
@@ -32,8 +33,6 @@ class Robot2d(gym.Env):
 			1 		X Velocity		-Inf		Inf
 			2 		Y position 		-5 			5
 			3		Y Velocity 		-Inf		Inf
-			4		LiDAR Range 	min_d[90]	max_d[90]  // Evaluation
-
 		Action: 
 			Type: Box (2)
 			Num 	Action 	 Min 	Max
@@ -44,19 +43,11 @@ class Robot2d(gym.Env):
 		super(Robot2d, self).__init__()
 
 		# Initialize variables
-		self.dt - 0.01 # Time delta
-
 		self.state = None
 		self.viewer = None 
+		self.robot = Robot()
 
-		self.x_goal = 3.2 # Example
-		self.y_goal = 3.2 # Example
-		self.x_dot_goal = 0
-		self.y_dot_goal = 0
-
-		self.err_eps = 0.05
-
-		# Observation Space
+		# Spaces Environment
 		low = np.array([-THRESHOLD_MAP_X, 
 						-np.finfo(np.float32).max,
 						-THRESHOLD_MAP_Y,
@@ -73,28 +64,22 @@ class Robot2d(gym.Env):
 		self.action_space = spaces.Box(low = -np.finfo(np.float32).max, high = np.finfo(np.float32).max, shape = (2,1), dtype= np.float32)
 
 
-	def step(self,action): 
-		acc_x = action[0]
-		acc_y = action[1]
+	def step(self,action):
 
-		# Robot state update
-		x, x_dot, y, y_dot = self.state 
-		x = x + self.dt*x_dot
-		x_dot = x_dot + self.dt*acc_x
-		y = y + self.dt*y_dot
-		y_dot = y_dot + self.dt*acc_y
+		# State Update 
+		vx = action[0]
+		vy = action[1]
+		state_robot, warn =self.robot.step(vx,vy)
+		flag_crash = self.robot.is_crashed()
 
-		self.state = (x, x_dot, y, y_dot)
+		# Observation Update
+		x_laser_s, y_lases_s = self.robot.scanning()
 
-		err_radius = np.sqrt( (self.x_goal - x)**2 + (self.y - y)**2  )
+		# Done condition
 
-		# Set done condition based on the desired goal: The robot stops near to the goal position 
-		done = bool(
-			err_radius <= self.err_eps and
-			x_dot == self.x_dot_goal and
-			y_dot == self.y_dot_goal)
+		reward = self.reward_evaluation()# Reward evaluation - To complete
 
-		# Reward
+
 		return np.array(self.state), reward, done, {}
 
 	def reset(self): # Return to initial state
