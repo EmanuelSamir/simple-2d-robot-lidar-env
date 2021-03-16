@@ -1,7 +1,9 @@
 # Call Library robot
 import sys
-sys.path.insert(1,'/home/rauloestu/2d-simple-robot-lidar-env/2d-robot')
-import robot
+sys.path.insert(1,'../../../2d-robot')
+from robot import *
+
+
 
 # Core libraries
 import gym 
@@ -44,7 +46,7 @@ class Robot2d(gym.Env):
 		# Initialize variables
 		self.state = None
 		self.viewer = None 
-		self.robot = Robot()
+		self.robot = Robot(dT = 0.1)
 		self.eps_err = 0.05
 		self.steps = 0
 
@@ -66,11 +68,11 @@ class Robot2d(gym.Env):
 		vy = action[1]
 		self.robot.step(vx,vy)
 		robot_pos = np.array([self.robot.xr, self.robot.yr])
-		flag_crash = self.robot.is_crashed()
+		is_crashed = self.robot.is_crashed()
 
 		# Observation Update
 		self.robot.scanning()
-		obs = np.array([self.robot.xls, self.robot.yls])
+		obs = np.array(self.robot.xls +  self.robot.yls)
 
 
 		# Done condition
@@ -82,20 +84,25 @@ class Robot2d(gym.Env):
 
 		if not done:
 			self.steps += 1
+			reward = - np.linalg.norm(self.robot_goal-robot_pos)
+
+		else:
 			if is_crashed: 
 				reward = -100
-			elif: 
-				reward = np.linalg.norm(self.robot_goal-robot_pos)
-		else: 
-			reward = 0
+			else: 
+				reward = 0
 			# Acabó el número de episodiroos
 
-		return np.concatenate(robot_pos,obs) , reward, done, {}
+		return np.concatenate( (robot_pos - self.robot_goal,obs)) , reward, done, {}
 
 	def reset(self): # Return to initial state
 		self.robot.reset()
+		robot_pos = np.array([self.robot.xr, self.robot.yr])
+		# Observation Update
+		self.robot.scanning()
+		obs = np.array(self.robot.xls +  self.robot.yls)
 		print("The environment has been reset")
-		return np.array([self.robot.xr, self.robot.yr])
+		return np.concatenate( (robot_pos - self.robot_goal,obs))
 
 
 	def render(self):
