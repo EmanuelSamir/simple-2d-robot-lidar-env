@@ -1,16 +1,21 @@
 # 2D Robot and Lidar Simulation
 
+**2D Robot Environment - OpenAI Gym**
 *This is a simple simulation for a 2d robot and lidar.*
 
-A simple 2D robot version with Lidar and deterministic sensor measurements for fast simulation. Environment simulation filled with circular obstacles.
-Pending implementation for compatibility with ROS and **env**. Simulation for DRL algorithms.
+Observation Space: 
+- Robot position (X,Y) coordinates.
+- LiDAR measurements (Retrieved by the simulation space).
+Action Space: 
+- Robot velocities (X,Y).
+Reward: 
+- Euclidean distance between current and goal positions.
 
-![image](./assets/simulation.png)
+*The episode ends based on three conditions: the robot reaches its desired position (using an \epsilon parameter), at 200 steps, crashes with an obstacle.
 
 ## TODO
-- [x] Simulation draft
-- [ ] Simulation script
-- [ ] Integration with env (OpenAI)
+- [X] Environment creation
+- [ ] Define reward conditions
 - [ ] Integration with ROS
 - [ ] Master merge
 
