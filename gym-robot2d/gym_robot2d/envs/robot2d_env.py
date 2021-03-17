@@ -19,7 +19,7 @@ from gym.utils import seeding
 
 
 
-class Robot2d(gym.Env): 
+class Robot2dEnv(gym.Env): 
 	def __init__(self, x_goal=4, y_goal=4):
 		"""
 		Description: 
