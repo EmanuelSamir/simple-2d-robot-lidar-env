@@ -1,0 +1,1 @@
+from gym_robot2d.envs.robot2d_env import Robot2dEnv
