@@ -1,7 +1,7 @@
 
 
 import gym
-from robot2d_env import *
+from  import *
 import time
 
 env_name = 'robot2d-v0'
