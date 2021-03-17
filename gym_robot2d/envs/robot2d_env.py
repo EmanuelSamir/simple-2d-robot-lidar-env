@@ -41,12 +41,12 @@ class Robot2dEnv(gym.Env):
 			1 		Vy    -Inf 	Inf
 		"""
 
-		super(Robot2d, self).__init__()
+		super(Robot2dEnv, self).__init__()
 
 		# Initialize variables
 		self.state = None
 		self.viewer = None 
-		self.robot = Robot(dT = 0.1)
+		self.robot = Robot2D(dT = 0.1)
 		self.eps_err = 0.05
 		self.steps = 0
 
