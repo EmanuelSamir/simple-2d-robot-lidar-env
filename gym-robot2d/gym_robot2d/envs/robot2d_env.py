@@ -1,9 +1,9 @@
 # Call Library robot
 import sys
-sys.path.insert(1,'../../../2d-robot')
-from robot import *
+#a = sys.path.insert(1,'../../../robot_2d')
+#print(sys.path)
 
-
+from ..robot_2d import *
 
 # Core libraries
 import gym 
@@ -56,6 +56,7 @@ class Robot2dEnv(gym.Env):
 		self.robot_goal = np.array([self.x_goal, self.y_goal])
 
 		# Spaces Environment
+		# maybe remove below
 		self.observation_space = spaces.Box(low = self.robot.env_min_size, 
 			high = self.robot.env_max_size, shape = (2,1), dtype=np.float32)
 		self.action_space = spaces.Box(low = -np.finfo(np.float32).max, 
@@ -74,7 +75,6 @@ class Robot2dEnv(gym.Env):
 		self.robot.scanning()
 		obs = np.array(self.robot.xls +  self.robot.yls)
 
-
 		# Done condition
 		done = bool(
 			is_crashed 
@@ -88,19 +88,21 @@ class Robot2dEnv(gym.Env):
 
 		else:
 			if is_crashed: 
-				reward = -100
+				reward = -10
 			else: 
 				reward = 0
-			# Acabó el número de episodiroos
+			# Acabó el número de episodios
 
 		return np.concatenate( (robot_pos - self.robot_goal,obs)) , reward, done, {}
 
 	def reset(self): # Return to initial state
 		self.robot.reset()
 		robot_pos = np.array([self.robot.xr, self.robot.yr])
-		# Observation Update
+
+		# First observation
 		self.robot.scanning()
 		obs = np.array(self.robot.xls +  self.robot.yls)
+
 		print("The environment has been reset")
 		return np.concatenate( (robot_pos - self.robot_goal,obs))
 
