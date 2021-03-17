@@ -3,7 +3,7 @@ import sys
 #a = sys.path.insert(1,'../../../robot_2d')
 #print(sys.path)
 
-from ..robot_2d import *
+from robot2d import Robot2D
 
 # Core libraries
 import gym 
