@@ -6,8 +6,10 @@
 __Observation Space:__ 
 - Robot position (X,Y) coordinates.
 - LiDAR measurements (Retrieved by the simulation space).
+
 __Action Space:__ 
 - Robot velocities (X,Y).
+
 __Reward:__ 
 - Euclidean distance between current and goal positions.
 
