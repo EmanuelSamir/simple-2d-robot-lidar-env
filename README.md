@@ -14,7 +14,7 @@ __Action Space:__
 __Reward:__ 
 - Euclidean distance between current and goal positions.
 
-*The episode ends based on three conditions: the robot reaches its desired position (using an /epsilon parameter), at 200 steps, crashes with an obstacle.*
+*The episode ends based on three conditions: the robot reaches its desired position (using an $\epsilon$ parameter), at 200 steps, crashes with an obstacle.*
 
 ## TODO
 - [X] Environment creation
