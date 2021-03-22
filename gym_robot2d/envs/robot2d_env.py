@@ -20,7 +20,7 @@ from gym.utils import seeding
 
 
 class Robot2dEnv(gym.Env): 
-	def __init__(self, x_goal=4, y_goal=4):
+	def __init__(self):
 		"""
 		Description: 
 			A 2D Robot is placed on an empty environment
@@ -46,27 +46,34 @@ class Robot2dEnv(gym.Env):
 		# Initialize variables
 		self.state = None
 		self.viewer = None 
-		self.robot = Robot2D(dT = 0.1)
+		self.robot = Robot2D(dT = 0.05, is_render=True, is_goal=True)
 		self.eps_err = 0.05
 		self.steps = 0
+		seeding
+
+		self.max_action_magnitude = 5
 
 		# Position variables
-		self.x_goal = x_goal 
-		self.y_goal = y_goal 
+		self.x_goal = 0
+		self.y_goal = 0 
 		self.robot_goal = np.array([self.x_goal, self.y_goal])
 
 		# Spaces Environment
 		# maybe remove below
-		self.observation_space = spaces.Box(low = self.robot.env_min_size, 
-			high = self.robot.env_max_size, shape = (2,1), dtype=np.float32)
 		self.action_space = spaces.Box(low = -np.finfo(np.float32).max, 
 			high = np.finfo(np.float32).max, shape = (2,1), dtype= np.float32)
+
 
 	def step(self,action):
 
 		# State Update 
 		vx = action[0]
 		vy = action[1]
+		# Clip actions
+		vx = np.clip(vx, -self.max_action_magnitude, self.max_action_magnitude)
+		vy = np.clip(vy, -self.max_action_magnitude, self.max_action_magnitude)
+
+
 		self.robot.step(vx,vy)
 		robot_pos = np.array([self.robot.xr, self.robot.yr])
 		is_crashed = self.robot.is_crashed()
@@ -79,7 +86,7 @@ class Robot2dEnv(gym.Env):
 		done = bool(
 			is_crashed 
 			or np.linalg.norm(self.robot_goal-robot_pos) <= self.eps_err
-			or self.steps == 200
+			or self.steps > 300
 			)
 
 		if not done:
@@ -97,15 +104,21 @@ class Robot2dEnv(gym.Env):
 
 	def reset(self): # Return to initial state
 		self.robot.reset()
+		
+		self.steps = 0
+
 		robot_pos = np.array([self.robot.xr, self.robot.yr])
+		self.robot_goal = np.array([self.robot.xg, self.robot.yg])
 
 		# First observation
 		self.robot.scanning()
 		obs = np.array(self.robot.xls +  self.robot.yls)
-
-		print("The environment has been reset")
+		#print("The environment has been reset")
 		return np.concatenate( (robot_pos - self.robot_goal,obs))
 
 
 	def render(self):
 		self.robot.render()
+
+	def close(self):
+		self.robot.close()
