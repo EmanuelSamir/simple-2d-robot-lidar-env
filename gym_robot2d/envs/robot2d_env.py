@@ -10,11 +10,13 @@ import gym
 import numpy as np 
 import math
 import time
+import random
 import os
 
 # Utils for GYM 
 from gym import spaces, error, utils
 from gym.utils import seeding
+
 
 
 
@@ -47,7 +49,7 @@ class Robot2dEnv(gym.Env):
 		self.state = None
 		self.viewer = None 
 		self.robot = Robot2D(dT = 0.05, is_render=True, is_goal=True)
-		self.eps_err = 0.05
+		self.eps_err = 0.4
 		self.steps = 0
 		seeding
 
@@ -80,7 +82,12 @@ class Robot2dEnv(gym.Env):
 
 		# Observation Update
 		self.robot.scanning()
-		obs = np.array(self.robot.xls +  self.robot.yls)
+		xls_r = self.robot.xls - self.robot.xr
+		yls_r = self.robot.yls - self.robot.yr
+		pairs = list(zip(xls_r, yls_r))
+		random.shuffle(pairs)
+
+		obs = np.array([val for pair in pairs for val in pair])
 
 		# Done condition
 		done = bool(
@@ -91,11 +98,13 @@ class Robot2dEnv(gym.Env):
 
 		if not done:
 			self.steps += 1
-			reward = - np.linalg.norm(self.robot_goal-robot_pos)
+			reward = - 0.1* np.linalg.norm(self.robot_goal-robot_pos)
 
 		else:
 			if is_crashed: 
 				reward = -10
+			elif (np.linalg.norm(self.robot_goal-robot_pos) <= self.eps_err):
+				reward = 10
 			else: 
 				reward = 0
 			# Acabó el número de episodios
