@@ -22,7 +22,13 @@ from gym.utils import seeding
 
 
 class Robot2dEnv(gym.Env): 
-	def __init__(self):
+	def __init__(self, 
+				dT = 0.05,
+				is_goal = True,
+				is_rotated = True,
+				eps_err = 0.4,
+				max_action_magnitude = 5
+				):
 		"""
 		Description: 
 			A 2D Robot is placed on an empty environment
@@ -48,42 +54,70 @@ class Robot2dEnv(gym.Env):
 		# Initialize variables
 		self.state = None
 		self.viewer = None 
-		self.robot = Robot2D(dT = 0.05, is_render=True, is_goal=True)
-		self.eps_err = 0.4
-		self.steps = 0
-		seeding
+		self.is_rotated = is_rotated
+		self.is_goal = is_goal
+		self.dT = dT
 
-		self.max_action_magnitude = 5
+		self.robot = Robot2D(dT = self.dT, is_render=True, is_goal = self.is_goal, is_rotated = self.is_rotated)
+		self.eps_err = eps_err
+		self.steps = 0
+
+		self.max_action_magnitude = max_action_magnitude
 
 		# Position variables
-		self.x_goal = 0
-		self.y_goal = 0 
-		self.robot_goal = np.array([self.x_goal, self.y_goal])
+		self.robot_goal = np.array([0., 0, 0.]) if self.is_rotated else np.array([0., 0.])
 
 		# Spaces Environment
 		# maybe remove below
-		self.action_space = spaces.Box(low = -np.finfo(np.float32).max, 
-			high = np.finfo(np.float32).max, shape = (2,1), dtype= np.float32)
+		self.action_space = \
+			spaces.Box(low = -max_action_magnitude, 
+			high = max_action_magnitude, shape = (3,1), dtype= np.float32) if self.is_rotated else \
+			spaces.Box(low = -max_action_magnitude, 
+			high = max_action_magnitude, shape = (2,1), dtype= np.float32) 
 
 
 	def step(self,action):
+		if self.is_rotated:
+			required_dim = 3
+		else:
+			required_dim = 2
+
+		if np.shape(action)[0] != required_dim:
+			raise Exception("Wrong action dim. Expected to have {} but got {} instead.".format(np.shape(action)[0], required_dim))
 
 		# State Update 
 		vx = action[0]
 		vy = action[1]
+		w = action[2] if self.is_rotated else 0.
+
+
 		# Clip actions
 		vx = np.clip(vx, -self.max_action_magnitude, self.max_action_magnitude)
 		vy = np.clip(vy, -self.max_action_magnitude, self.max_action_magnitude)
+		w = np.clip(w, -self.max_action_magnitude, self.max_action_magnitude)
 
 
-		self.robot.step(vx,vy)
-		robot_pos = np.array([self.robot.xr, self.robot.yr])
+		self.robot.step(vx,vy,w)
+
+
+		if self.is_rotated:
+			robot_pos = np.array([self.robot.xr, self.robot.yr, self.robot.thr])
+		else:
+			robot_pos = np.array([self.robot.xr, self.robot.yr])
+
 		is_crashed = self.robot.is_crashed()
 
 		# Observation Update
-		self.robot.scanning()
+		touches = self.robot.scanning()
 		xls_r = self.robot.xls - self.robot.xr
 		yls_r = self.robot.yls - self.robot.yr
+		xls_r = xls_r[touches]
+		yls_r = yls_r[touches]
+		
+		if xls_r.size == 0:
+			xls_r = np.array([self.robot.max_range])
+			yls_r = np.array([0.])
+
 		pairs = list(zip(xls_r, yls_r))
 		random.shuffle(pairs)
 
@@ -92,18 +126,21 @@ class Robot2dEnv(gym.Env):
 		# Done condition
 		done = bool(
 			is_crashed 
-			or np.linalg.norm(self.robot_goal-robot_pos) <= self.eps_err
-			or self.steps > 300
+			# Dense reward
+			or np.linalg.norm(self.robot_goal[0:2] -robot_pos[0:2]) <= self.eps_err
+			or self.steps > 200
 			)
 
 		if not done:
 			self.steps += 1
-			reward = - 0.1* np.linalg.norm(self.robot_goal-robot_pos)
+			#reward = 0
+			# Dense reward
+			reward = 0. #- 0.1* np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2])
 
 		else:
 			if is_crashed: 
 				reward = -10
-			elif (np.linalg.norm(self.robot_goal-robot_pos) <= self.eps_err):
+			elif (np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2]) <= self.eps_err):
 				reward = 10
 			else: 
 				reward = 0
@@ -116,11 +153,27 @@ class Robot2dEnv(gym.Env):
 		
 		self.steps = 0
 
-		robot_pos = np.array([self.robot.xr, self.robot.yr])
-		self.robot_goal = np.array([self.robot.xg, self.robot.yg])
+		if self.is_rotated:
+			robot_pos = np.array([self.robot.xr, self.robot.yr, self.robot.thr])
+		else:
+			robot_pos = np.array([self.robot.xr, self.robot.yr])
+
+		self.robot_goal = 	np.array([self.robot.xg, self.robot.yg, self.robot.thg]) \
+							if self.is_rotated else  \
+							np.array([self.robot.xg, self.robot.yg])
 
 		# First observation
-		self.robot.scanning()
+		touches = self.robot.scanning()
+		xls_r = self.robot.xls - self.robot.xr
+		yls_r = self.robot.yls - self.robot.yr
+		
+		xls_r = xls_r[touches]
+		yls_r = yls_r[touches]
+		
+		if xls_r.size == 0:
+			xls_r = np.array([self.robot.max_range])
+			yls_r = np.array([0.])
+
 		obs = np.array(self.robot.xls +  self.robot.yls)
 		#print("The environment has been reset")
 		return np.concatenate( (robot_pos - self.robot_goal,obs))
