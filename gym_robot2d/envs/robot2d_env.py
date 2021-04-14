@@ -118,10 +118,12 @@ class Robot2dEnv(gym.Env):
 			xls_r = np.array([self.robot.max_range])
 			yls_r = np.array([0.])
 
-		pairs = list(zip(xls_r, yls_r))
-		random.shuffle(pairs)
+		
+		#pairs = list(zip(xls_r, yls_r))
+		#random.shuffle(pairs)
 
-		obs = np.array([val for pair in pairs for val in pair])
+		#obs = np.array([val for pair in pairs for val in pair])
+		obs = np.concatenate( (xls_r, yls_r) )
 
 		# Done condition
 		done = bool(
@@ -139,14 +141,14 @@ class Robot2dEnv(gym.Env):
 
 		else:
 			if is_crashed: 
-				reward = -10
+				reward = -200
 			elif (np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2]) <= self.eps_err):
-				reward = 10
+				reward = 200
 			else: 
 				reward = 0
 			# Acabó el número de episodios
 
-		return np.concatenate( (robot_pos - self.robot_goal,obs)) , reward, done, {}
+		return np.concatenate( (robot_pos ,obs)) , reward, done, {} #- self.robot_goal
 
 	def reset(self): # Return to initial state
 		self.robot.reset()
@@ -166,7 +168,7 @@ class Robot2dEnv(gym.Env):
 		touches = self.robot.scanning()
 		xls_r = self.robot.xls - self.robot.xr
 		yls_r = self.robot.yls - self.robot.yr
-		
+
 		xls_r = xls_r[touches]
 		yls_r = yls_r[touches]
 		
@@ -174,9 +176,10 @@ class Robot2dEnv(gym.Env):
 			xls_r = np.array([self.robot.max_range])
 			yls_r = np.array([0.])
 
-		obs = np.array(self.robot.xls +  self.robot.yls)
+		#obs = np.array(self.robot.xls +  self.robot.yls)
+		obs = np.concatenate( (xls_r, yls_r) )
 		#print("The environment has been reset")
-		return np.concatenate( (robot_pos - self.robot_goal,obs))
+		return np.concatenate( (robot_pos ,obs)) # - self.robot_goal
 
 
 	def render(self):
