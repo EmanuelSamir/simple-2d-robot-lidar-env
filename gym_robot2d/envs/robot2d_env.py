@@ -90,15 +90,12 @@ class Robot2dEnv(gym.Env):
 		vy = action[1]
 		w = action[2] if self.is_rotated else 0.
 
-
 		# Clip actions
 		vx = np.clip(vx, -self.max_action_magnitude, self.max_action_magnitude)
 		vy = np.clip(vy, -self.max_action_magnitude, self.max_action_magnitude)
 		w = np.clip(w, -self.max_action_magnitude, self.max_action_magnitude)
 
-
 		self.robot.step(vx,vy,w)
-
 
 		if self.is_rotated:
 			robot_pos = np.array([self.robot.xr, self.robot.yr, self.robot.thr])
@@ -118,34 +115,62 @@ class Robot2dEnv(gym.Env):
 			xls_r = np.array([self.robot.max_range])
 			yls_r = np.array([0.])
 
-		
+		# Random shuffle
 		#pairs = list(zip(xls_r, yls_r))
 		#random.shuffle(pairs)
-
 		#obs = np.array([val for pair in pairs for val in pair])
+		
 		obs = np.concatenate( (xls_r, yls_r) )
+
+		# Check goal in front of robot to be successful
+		xg = self.robot.xg
+		yg = self.robot.yg
+
+		th = self.robot.thr
+		xr = self.robot.xr
+		yr = self.robot.yr
+		fov = np.pi/3
+		lt = 1.2
+
+		th_p = th + fov / 2
+		th_m = th - fov / 2
+
+		y_th_p = np.tan(th_p) * ( xg - xr) + yr
+		y_th_m = np.tan(th_m) * ( xg - xr) + yr
+
+		is_success = False
+
+		if  (yg > y_th_m) and \
+			(yg < y_th_p) and \
+			( np.linalg.norm( [ yg - yr, xg - xr] ) < lt ):
+			is_success = True
+		
+		# Rewards 
+		r_collide = -10
+		r_success = 10
+		r_alive = 0.0
+		r_nav = r_alive 
 
 		# Done condition
 		done = bool(
 			is_crashed 
-			# Dense reward
-			or np.linalg.norm(self.robot_goal[0:2] -robot_pos[0:2]) <= self.eps_err
+			or is_success #np.linalg.norm(self.robot_goal[0:2] -robot_pos[0:2]) <= self.eps_err
 			or self.steps > 200
 			)
 
 		if not done:
 			self.steps += 1
-			#reward = 0
-			# Dense reward
-			reward = 0. #- 0.1* np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2])
-
+			# Dense reward navigation
+			# reward = - 0.1* np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2])
+			# Sparse reward exploration
+			reward = r_nav
 		else:
 			if is_crashed: 
-				reward = -200
-			elif (np.linalg.norm(self.robot_goal[0:2]-robot_pos[0:2]) <= self.eps_err):
-				reward = 200
+				reward = r_collide
+			elif is_success:
+				reward = r_success
 			else: 
-				reward = 0
+				reward = r_nav
 			# Acabó el número de episodios
 
 		return np.concatenate( (robot_pos ,obs)) , reward, done, {} #- self.robot_goal
