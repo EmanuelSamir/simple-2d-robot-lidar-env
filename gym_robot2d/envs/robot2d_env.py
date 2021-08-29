@@ -19,10 +19,6 @@ from collections import deque, namedtuple
 from gym import spaces, error, utils
 from gym.utils import seeding
 
-
-
-
-
 class Robot2dEnv(gym.Env): 
 	def __init__(self, 
 				dT = 0.05,
@@ -64,9 +60,6 @@ class Robot2dEnv(gym.Env):
 		self.eps_err = eps_err
 		self.steps = 0
 
-		self.queue_state = deque(maxlen = 10)
-		self.queue_nomotion = deque(maxlen = 50)
-
 		self.final_state = 0
 		self.max_action_magnitude = max_action_magnitude
 
@@ -107,7 +100,6 @@ class Robot2dEnv(gym.Env):
 
 		self.robot.step(vx,vy,w)
 
-
 		# Transform robot pose in t wrt robot initial frame
 		I_T_r = pose2mat_2d(self.robot.xr, self.robot.yr, self.robot.thr)
 		I_T_r0 = pose2mat_2d(self.xr0, self.yr0, self.thr0)
@@ -123,7 +115,6 @@ class Robot2dEnv(gym.Env):
 		r_T_I = inverse_mat_2d(I_T_r)
 
 		# Check if robot is crashed
-
 		is_crashed = self.robot.is_crashed()
 
 		# Observation Update
@@ -161,7 +152,7 @@ class Robot2dEnv(gym.Env):
 		r_T_g = r_T_I.dot(I_T_g)
 		xg_r, yg_r, _ = mat2pose_2d(r_T_g)
 
-		## Notice we do not use from Transformation because goal does not have yet orientation
+		## Notice we do not use from Transformation because goal does not have orientation
 		thg_r = np.arctan2(yg_r, xg_r)
 
 		self.robot_goal = 	np.array([xg_r, yg_r, thg_r]) \
@@ -174,7 +165,6 @@ class Robot2dEnv(gym.Env):
 		th_p = fov / 2
 		th_m = -fov / 2
 
-
 		is_success = False
 
 		if  (thg_r > th_m) and \
@@ -184,22 +174,13 @@ class Robot2dEnv(gym.Env):
 			#self.steps = 0
 			#self.robot.set_random_goal()
 
-
 		# Check if robot does not move
 		#print('thg_r:{} , xg_r: {}, yg_r:{} '.format(thg_r, xg_r,yg_r))
 		
-		self.queue_state.append([self.robot.xr, self.robot.yr])
-
-		if all(x == self.queue_state[0] for x in self.queue_state):
-			r_stopped = -3
-		else:
-			r_stopped = 0
-
-
 		# Rewards 
 		r_collide = -100
 		r_success = 20
-		r_alive = 0.5 + r_stopped
+		r_alive = 0.5 
 		r_nav = r_alive 
 
 		# Done condition
@@ -223,16 +204,14 @@ class Robot2dEnv(gym.Env):
 			else: 
 				reward = r_nav
 				self.final_state = 3
-			# Acabó el número de episodios
 
-		return np.concatenate( (robot_pos ,obs)) , reward, done, {}
+		return np.concatenate( (robot_pos, obs)), reward, done, {}
 
 	def reset(self): # Return to initial state
 		self.robot.reset()
 		
 		self.steps = 0
 		self.final_state = 0
-
 
 		# Save initial pose
 
